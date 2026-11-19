@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f19" />
+  <title>ALVES PLAY — IPTV Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #131a2a;
+      --surface-2: #1b2438;
+      --border: #26324d;
+      --primary: #7c3aed;
+      --primary-2: #06b6d4;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Splash Screen */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+    #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .splash-logo {
+      font-size: 2.3rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, #a78bfa, #22d3ee, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .splash-sub { color: var(--muted); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid rgba(255,255,255,0.12);
+      border-top-color: var(--primary-2);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-top: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(11, 15, 25, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .brand-wrap { display: flex; flex-direction: column; gap: 2px; }
+    .brand {
+      font-size: 1.2rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #a78bfa, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .mode-badge {
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: #34d399;
+      letter-spacing: 0.3px;
+    }
+    .mode-badge.web { color: #fbbf24; }
+    .header-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon-btn.primary {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      border-color: transparent;
+    }
+    .icon-btn:active { transform: scale(0.97); }
+
+    /* Main Layout */
+    main { max-width: 1100px; margin: 0 auto; padding: 12px 14px 90px; }
+
+    /* Player Card */
+    .player-card {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #05070d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    video { width: 100%; height: 100%; background: #000; }
+    .player-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 8px;
+      padding: 16px;
+      text-align: center;
+      pointer-events: none;
+    }
+    .player-placeholder.hidden { display: none; }
+    .now-playing {
+      background: var(--surface);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .now-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status-pill {
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .status-pill.ok { background: rgba(16,185,129,0.16); color: #34d399; }
+    .status-pill.err { background: rgba(239,68,68,0.16); color: #f87171; }
+
+    /* Search & Categories */
+    .controls-bar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .search-row { display: flex; gap: 8px; }
+    input[type="text"], input[type="url"], input[type="password"], select, textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 13px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      outline: none;
+    }
+    input:focus { border-color: var(--primary-2); }
+
+    .categories {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .categories::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 7px 13px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .cat-chip.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Channel Grid */
+    .channel-count { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .channel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .channel-card:hover, .channel-card.active { border-color: var(--primary-2); }
+    .channel-card:active { transform: scale(0.98); }
+    .ch-thumb {
+      width: 100%;
+      height: 76px;
+      background: var(--surface-2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-size: 1.5rem;
+    }
+    .ch-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+    .ch-name {
+      font-size: 0.84rem;
+      font-weight: 600;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .ch-group { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(2, 6, 23, 0.78);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    @media (min-width: 640px) { .modal-backdrop { align-items: center; } }
+
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px 18px 0 0;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    @media (min-width: 640px) { .modal { border-radius: 18px; } }
+
+    .modal-header { display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.05rem; font-weight: 800; }
+    .close-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--bg); padding: 4px; border-radius: 10px; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 9px 6px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; }
+    .tab-panel { display: none; flex-direction: column; gap: 10px; }
+    .tab-panel.active { display: flex; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), #2563eb); color: #fff; }
+    .btn-accent { background: var(--accent); color: #042f2e; }
+    .btn-secondary { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: rgba(239,68,68,0.16); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .info-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-note { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .status-note.ok { color: #34d399; }
+
+    /* Chatbot Floating Button & Drawer */
+    .bot-fab {
+      position: fixed;
+      right: 16px;
+      bottom: 18px;
+      z-index: 150;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 800;
+      font-size: 0.92rem;
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bot-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .chat-box {
+      height: 46vh;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg {
+      max-width: 90%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.bot { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); }
+    .msg.user { align-self: flex-end; background: var(--primary); color: #fff; }
+
+    .bot-cmd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .bot-cmd-btn {
+      background: linear-gradient(135deg, rgba(124,58,237,0.22), rgba(6,182,212,0.18));
+      border: 1px solid rgba(124,58,237,0.55);
+      color: var(--text);
+      padding: 11px 10px;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+    .bot-cmd-btn:active { transform: scale(0.97); }
+    .bot-cmd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .bot-cmd-btn.full {
+      background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(6,182,212,0.18));
+      border-color: rgba(16,185,129,0.55);
+    }
+
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input-row button { width: auto; padding: 0 16px; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 78px;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 999;
+      max-width: 90vw;
+      text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash">
+    <div class="splash-logo">ALVES PLAY</div>
+    <div class="splash-sub">Seu entretenimento começa aqui</div>
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-wrap">
+      <div class="brand">ALVES PLAY</div>
+      <div class="mode-badge" id="modeBadge">⚡ HTTP Nativo Ativo</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openModal('settingsModal')">⚙️ Config</button>
+      <button class="icon-btn primary" onclick="openModal('listModal')">＋ Lista</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Player -->
+    <section class="player-card">
+      <div class="video-wrap">
+        <video id="videoPlayer" controls playsinline></video>
+        <div id="playerPlaceholder" class="player-placeholder">
+          <div style="font-size:2rem;">📺</div>
+          <div><strong>Nenhum canal reproduzindo</strong></div>
+          <div style="font-size:0.8rem;">Adicione uma lista M3U ou solicite um teste no botão abaixo.</div>
+        </div>
+      </div>
+      <div class="now-playing">
+        <div class="now-title" id="nowPlayingTitle">Pronto para reproduzir</div>
+        <span class="status-pill" id="playerStatus">Aguardando</span>
+      </div>
+    </section>
+
+    <!-- Search & Categories -->
+    <section class="controls-bar">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Buscar canal, filme ou série..." oninput="renderChannels()" />
+      </div>
+      <div class="categories" id="categoryBar"></div>
+    </section>
+
+    <div class="channel-count">
+      <span id="channelCountText">0 canais carregados</span>
+      <span id="activeListName"></span>
+    </div>
+
+    <!-- Channels -->
+    <section class="channel-grid" id="channelGrid"></section>
+  </main>
+
+  <!-- Bot FAB -->
+  <button class="bot-fab" onclick="openModal('botModal')">
+    <span class="bot-dot"></span>
+    <span>teste 🤖</span>
+  </button>
+
+  <!-- Modal: Adicionar Lista IPTV -->
+  <div class="modal-backdrop" id="listModal" onclick="backdropClose(event, 'listModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Adicionar Lista IPTV</div>
+        <button class="close-btn" onclick="closeModal('listModal')">✕</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tabUrl', this)">Link M3U</button>
+        <button class="tab-btn" onclick="switchTab('tabXtream', this)">Xtream</button>
+        <button class="tab-btn" onclick="switchTab('tabFile', this)">Arquivo</button>
+      </div>
+
+      <!-- Tab URL -->
+      <div class="tab-panel active" id="tabUrl">
+        <div class="field">
+          <label>Nome da lista (opcional)</label>
+          <input type="text" id="m3uName" placeholder="Ex: Minha Lista IPTV" />
+        </div>
+        <div class="field">
+          <label>URL da Lista M3U / M3U8</label>
+          <input type="url" id="m3uUrl" placeholder="http://servidor.com/get.php?username=..." />
+        </div>
+        <button class="btn btn-primary" id="btnLoadUrl" onclick="loadFromUrl()">Carregar Lista via URL</button>
+      </div>
+
+      <!-- Tab Xtream -->
+      <div class="tab-panel" id="tabXtream">
+        <div class="field">
+          <label>Servidor / Host (com http:// ou https://)</label>
+          <input type="url" id="xtHost" placeholder="http://servidor.com:8080" />
+        </div>
+        <div class="field">
+          <label>Usuário</label>
+          <input type="text" id="xtUser" placeholder="usuario" />
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input type="text" id="xtPass" placeholder="senha" />
+        </div>
+        <button class="btn btn-primary" onclick="loadFromXtream()">Conectar e Carregar Lista</button>
+      </div>
+
+      <!-- Tab File -->
+      <div class="tab-panel" id="tabFile">
+        <div class="field">
+          <label>Selecione um arquivo .m3u ou .m3u8 do celular</label>
+          <input type="file" id="m3uFile" accept=".m3u,.m3u8,text/plain" onchange="loadFromFile(event)" />
+        </div>
+      </div>
+
+      <button class="btn btn-danger" onclick="clearSavedList()">Limpar lista salva</button>
+    </div>
+  </div>
+
+  <!-- Modal: Configurações -->
+  <div class="modal-backdrop" id="settingsModal" onclick="backdropClose(event, 'settingsModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Configurações — Conexão & Bot</div>
+        <button class="close-btn" onclick="closeModal('settingsModal')">✕</button>
+      </div>
+
+      <div class="info-box">
+        <div class="status-note ok" id="nativeStatusText">
+          Verificando ambiente...
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="field">
+          <label>Comando 1 — #Teste sem adulto</label>
+          <input type="url" id="botUrlSemAdulto" />
+        </div>
+        <div class="field">
+          <label>Comando 2 — #Teste completo</label>
+          <input type="url" id="botUrlCompleto" />
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:var(--muted);">
+          <input type="checkbox" id="autoLoadFromBot" checked style="width:auto;" />
+          Carregar lista IPTV automaticamente ao receber resposta do bot
+        </label>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveSettings()">Salvar Configurações</button>
+    </div>
+  </div>
+
+  <!-- Modal: Chatbot "teste" -->
+  <div class="modal-backdrop" id="botModal" onclick="backdropClose(event, 'botModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">🤖 Assistente — teste</div>
+        <button class="close-btn" onclick="closeModal('botModal')">✕</button>
+      </div>
+
+      <div class="chat-box" id="chatBox"></div>
+
+      <div class="bot-cmd-grid">
+        <button class="bot-cmd-btn" id="btnCmdSemAdulto" onclick="triggerBotCommand('sem_adulto')">
+          🛡️ #Teste sem adulto
+        </button>
+        <button class="bot-cmd-btn full" id="btnCmdCompleto" onclick="triggerBotCommand('completo')">
+          ⭐ #Teste completo
+        </button>
+      </div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Digite #Teste sem adulto ou #Teste completo..." onkeydown="if(event.key==='Enter') handleChatInput()" />
+        <button class="btn btn-primary" id="btnSendBot" onclick="handleChatInput()"
