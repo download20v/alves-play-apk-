@@ -1,0 +1,14 @@
+{
+  "appId": "com.alvesplay.iptv",
+  "appName": "ALVES PLAY",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
