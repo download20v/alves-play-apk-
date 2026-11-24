@@ -1,0 +1,16 @@
+{
+  "renew_url": "https://seusite.com/renovar",
+  "endpoints": {
+    "sem_adulto": "https://painelblackbr.com/api/chatbot/yb1BERoWPR/Yen12r91PE",
+    "completo": "https://painelblackbr.com/api/chatbot/yb1BERoWPR/qK4WrkQ1eN"
+  },
+  "lists": {
+    "CL-1024": [
+      {
+        "name": "Lista Principal Cliente",
+        "url": "https://servidor-exemplo.com/get.php?username=teste&password=123&type=m3u_plus&output=m3u8",
+        "auto_load": false
+      }
+    ]
+  }
+}
