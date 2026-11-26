@@ -55,7 +55,12 @@ app.post("/bot/test", async (req, res) => {
   if (typeof command !== "string" || !/^[a-zA-Z0-9_-]{1,40}$/.test(command)) return res.status(400).json({ allowed: false, message: "Comando inválido." });
   if (typeof message !== "string" || message.length > 4000) return res.status(400).json({ allowed: false, message: "Mensagem inválida ou muito longa." });
 
-  if (!providerUrl) return res.status(503).json({ allowed: false, message: "O serviço do bot ainda está sendo configurado. Seu teste não foi iniciado." });
+  const settingsResult = await pool.query("SELECT active_mode, sem_adulto_url, completo_url, request_method, enabled FROM bot_settings WHERE id=1");
+  const botSettings = settingsResult.rows[0];
+  const configuredUrl = botSettings ? (botSettings.active_mode === "completo" ? botSettings.completo_url : botSettings.sem_adulto_url) : "";
+  const activeProviderUrl = botSettings && botSettings.enabled ? configuredUrl : providerUrl;
+  const requestMethod = botSettings && botSettings.enabled ? botSettings.request_method : "POST";
+  if (!activeProviderUrl) return res.status(503).json({ allowed: false, message: "O bot está desativado ou ainda não foi configurado pelo administrador." });
 
   const db = await pool.connect();
   try {
@@ -76,18 +81,30 @@ app.post("/bot/test", async (req, res) => {
       await db.query("COMMIT");
       return res.status(403).json({ allowed: false, used: true, message: "Seu período de teste já foi utilizado ou expirou. Renove para continuar.", renew_url: renewalUrl || undefined });
     }
-    const upstream = await fetch(providerUrl, {
+    const requestData = { app: appName, client_id: clientId, command, message };
+    let targetUrl = activeProviderUrl;
+    const upstreamOptions = {
       signal: AbortSignal.timeout(15000),
-      method: "POST",
-      headers: { "content-type": "application/json", ...(providerKey ? { authorization: `Bearer ${providerKey}` } : {}) },
-      body: JSON.stringify({ app: appName, client_id: clientId, command, message })
-    });
+      method: requestMethod,
+      headers: { "content-type": "application/json", ...(providerKey ? { authorization: `Bearer ${providerKey}` } : {}) }
+    };
+    if (requestMethod === "GET") {
+      const target = new URL(activeProviderUrl);
+      for (const [key,value] of Object.entries(requestData)) target.searchParams.set(key,String(value));
+      targetUrl = target.toString();
+    } else {
+      upstreamOptions.body = JSON.stringify(requestData);
+    }
+    const upstream = await fetch(targetUrl, upstreamOptions);
     if (!upstream.ok) {
       await db.query("ROLLBACK");
       return res.status(502).json({ allowed: false, message: "O bot está temporariamente indisponível. Seu teste não foi iniciado. Tente novamente." });
     }
-    const payload = await upstream.json();
-    const reply = typeof payload.reply === "string" ? payload.reply.slice(0, 12000) : "";
+    const rawPayload = await upstream.text();
+    let payload;
+    try { payload = JSON.parse(rawPayload); } catch { payload = { reply: rawPayload }; }
+    const replyValue = payload && (payload.reply ?? payload.response ?? payload.answer ?? payload.message ?? payload.text ?? payload.output);
+    const reply = typeof replyValue === "string" ? replyValue.slice(0, 12000) : "";
     if (!reply) {
       await db.query("ROLLBACK");
       return res.status(502).json({ allowed: false, message: "O provedor do bot retornou uma resposta inválida. Seu teste não foi iniciado." });
