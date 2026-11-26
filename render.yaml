@@ -19,3 +19,5 @@ services:
         value: "4"
       - key: ALLOWED_ORIGINS
         value: "*"
+      - key: SUPPORT_ADMIN_TOKEN
+        generateValue: true
