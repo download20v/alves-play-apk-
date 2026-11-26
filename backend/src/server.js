@@ -93,4 +93,23 @@ app.use((err, _req, res, _next) => {
   if (err.message === "Origem não autorizada") return res.status(403).json({ error: "origin_not_allowed" });
   return res.status(400).json({ error: "invalid_request" });
 });
-app.listen(port, "0.0.0.0", () => console.log(`ALVES PLAY API ouvindo na porta ${port}`));
+async function start() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_clients (
+      id BIGSERIAL PRIMARY KEY,
+      app_name TEXT NOT NULL,
+      client_id VARCHAR(128) NOT NULL,
+      trial_started_at TIMESTAMPTZ,
+      trial_ends_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT app_clients_app_client_unique UNIQUE (app_name, client_id)
+    )
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS app_clients_trial_ends_idx ON app_clients (trial_ends_at)");
+  app.listen(port, "0.0.0.0", () => console.log(`ALVES PLAY API ouvindo na porta ${port}`));
+}
+start().catch(error => {
+  console.error("startup_error", error.message);
+  process.exit(1);
+});
