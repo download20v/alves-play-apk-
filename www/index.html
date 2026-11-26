@@ -966,7 +966,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#modal').classLi
 <script src="./app-config.js"></script>
 <script>
 (function(){
-  const BOT_API_BASE = String(window.ALVE_PLAY_API_BASE || "").replace(/\/+$/, "");
+  // A API fica no servidor; nenhum token do provedor é publicado no aplicativo.
+  const BOT_API_BASE = String(window.ALVES_PLAY_API_BASE || "").replace(/\/+$/, "");
   const CLIENT_ID_KEY = "alves_play_client_id_v2";
 
   const STORAGE_KEYS = {
