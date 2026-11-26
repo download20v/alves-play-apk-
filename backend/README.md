@@ -21,6 +21,8 @@ API Node.js + PostgreSQL para o bot e o período de teste do ALVES PLAY. O banco
 2. Configure as variáveis de ambiente a partir de `.env.example`.
 3. Configure `BOT_PROVIDER_URL` para um endpoint HTTPS que aceite POST JSON com `app`, `client_id`, `command` e `message`, e retorne JSON com `reply`.
 4. Configure `BOT_PROVIDER_API_KEY` somente no servidor, se o provedor exigir autenticação.
+
+O backend aceita `BOT_PROVIDER_URL` somente com HTTPS e cancela chamadas ao provedor após 15 segundos. O campo `command` também é validado antes do encaminhamento.
 5. Configure `RENEW_URL` com a página de renovação.
 6. Inicie com `npm start`.
 
