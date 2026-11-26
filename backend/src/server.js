@@ -19,7 +19,7 @@ if (!Number.isFinite(trialHours) || trialHours <= 0 || trialHours > 720) throw n
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
-  max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000
+  max: 3, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000
 });
 
 app.disable("x-powered-by");
