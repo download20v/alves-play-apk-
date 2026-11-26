@@ -12,9 +12,9 @@
         "auto_load": true
       }
     ],
-    "CL-4822": [
+    "CL-5573": [
       {
-        "name": "Lista Cliente 2",
+        "name": "TICOMIA 2",
         "url": "http://zero1.shop:80/get.php?username=2994abzzh&password=9242rzhrc&type=m3u_plus&output=mpegts",
         "auto_load": true
       }
