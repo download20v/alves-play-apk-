@@ -1,6 +1,6 @@
 # ALVES PLAY — integração do bot
 
-O app usa `window.ALVE_PLAY_API_BASE`, definido em `www/app-config.js`. Deixe vazio até implantar o backend HTTPS.
+O app usa `window.ALVES_PLAY_API_BASE`, definido em `www/app-config.js`. Deixe vazio até implantar o backend HTTPS.
 
 ## Contrato de API
 
@@ -8,7 +8,7 @@ O app usa `window.ALVE_PLAY_API_BASE`, definido em `www/app-config.js`. Deixe va
 - Sucesso: `{ allowed: true, reply: "...", renew_url?: "https://..." }` (também pode retornar campos da lista autorizada).
 - Teste já usado: `{ allowed: false, used: true, message: "...", renew_url?: "https://..." }`.
 - Tokens do provedor, chaves privadas e credenciais devem ficar somente em variáveis de ambiente do backend, nunca no HTML/JS público.
-- O ID local identifica uma instalação, mas pode ser recriado ao limpar dados/reinstalar. Para uma política resistente a fraude, adicionar autenticação e Play Integrity no Android.
+- O ID local identifica uma instalação, mas pode ser recriado ao limpar dados/reinstalar. Para política resistente a fraude, adicionar autenticação e Play Integrity no Android.
 
 ## Segurança
 
