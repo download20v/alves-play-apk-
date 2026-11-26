@@ -142,6 +142,9 @@ async function start() {
     )
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS client_m3u_lists_client_idx ON client_m3u_lists (client_id)");
+  await pool.query(`INSERT INTO bot_settings(id,active_mode,sem_adulto_url,completo_url,request_method,enabled)
+    VALUES(1,'sem_adulto',$1,$2,'POST',FALSE) ON CONFLICT(id) DO NOTHING`,
+    ["https://painelblackbr.com/api/chatbot/KjLMarxL04/Yxl1jEBWMj","https://painelblackbr.com/api/chatbot/KjLMarxL04/b8K1x0K1vG"]);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS support_conversations (
