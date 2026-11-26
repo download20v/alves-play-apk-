@@ -65,17 +65,22 @@ app.post("/bot/test", async (req, res) => {
       await db.query("COMMIT");
       return res.status(403).json({ allowed: false, used: true, message: "Seu período de teste já foi utilizado ou expirou. Renove para continuar.", renew_url: renewalUrl || undefined });
     }
-    await db.query("COMMIT");
-
     const upstream = await fetch(providerUrl, {
       method: "POST",
       headers: { "content-type": "application/json", ...(providerKey ? { authorization: `Bearer ${providerKey}` } : {}) },
       body: JSON.stringify({ app: appName, client_id: clientId, command, message })
     });
-    if (!upstream.ok) return res.status(502).json({ allowed: false, message: "O bot está temporariamente indisponível. Tente novamente." });
+    if (!upstream.ok) {
+      await db.query("ROLLBACK");
+      return res.status(502).json({ allowed: false, message: "O bot está temporariamente indisponível. Seu teste não foi iniciado. Tente novamente." });
+    }
     const payload = await upstream.json();
     const reply = typeof payload.reply === "string" ? payload.reply.slice(0, 12000) : "";
-    if (!reply) return res.status(502).json({ allowed: false, message: "O provedor do bot retornou uma resposta inválida." });
+    if (!reply) {
+      await db.query("ROLLBACK");
+      return res.status(502).json({ allowed: false, message: "O provedor do bot retornou uma resposta inválida. Seu teste não foi iniciado." });
+    }
+    await db.query("COMMIT");
     return res.json({ allowed: true, reply, trial_ends_at: client.trial_ends_at, renew_url: renewalUrl || payload.renew_url || undefined });
   } catch (error) {
     try { await db.query("ROLLBACK"); } catch {}
