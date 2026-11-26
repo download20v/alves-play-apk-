@@ -1,44 +1,9 @@
 {
-  "renew_url": "https://seusite.com/renovar",
+  "version": 2,
+  "renew_url": "",
   "endpoints": {
-    "sem_adulto": "https://painelblackbr.com/api/chatbot/KjLMarxL04/PkaL4qdDgr",
-    "completo": "https://painelblackbr.com/api/chatbot/KjLMarxL04/Yxl1jEBWMj"
+    "sem_adulto": "",
+    "completo": ""
   },
-  "lists": {
-    "CL-4821": [
-      {
-        "name": "Lista Cliente 1",
-        "url": "https://servidor-exemplo.com/get.php?username=cliente1&password=senha1&type=m3u_plus&output=m3u8",
-        "auto_load": true
-      }
-    ],
-    "CL-5573": [
-      {
-        "name": "TICOMIA 2",
-        "url": "http://zero1.shop:80/get.php?username=2994abzzh&password=9242rzhrc&type=m3u_plus&output=mpegts",
-        "auto_load": true
-      }
-    ],
-    "CL-4823": [
-      {
-        "name": "Lista Cliente 3",
-        "url": "http://zero1.shop:80/get.php?username=2994abzzh&password=9242rzhrc&type=m3u_plus&output=mpegts",
-        "auto_load": true
-      }
-    ],
-    "CL-4824": [
-      {
-        "name": "Lista Cliente 4",
-        "url": "http://zero1.shop:80/get.php?username=2994abzzh&password=9242rzhrc&type=m3u_plus&output=mpegts",
-        "auto_load": true
-      }
-    ],
-    "CL-4825": [
-      {
-        "name": "Lista Cliente 5",
-        "url": "https://servidor-exemplo.com/get.php?username=cliente5&password=senha5&type=m3u_plus&output=m3u8",
-        "auto_load": true
-      }
-    ]
-  }
+  "lists": {}
 }
