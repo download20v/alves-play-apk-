@@ -3,6 +3,7 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const { Pool } = require("pg");
+const { createSupportRouter } = require("./support");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -42,6 +43,9 @@ app.get("/health", async (_req, res) => {
   catch { res.status(503).json({ ok: false, error: "database_unavailable" }); }
 });
 
+// Atendimento cliente <-> administrador; rotas administrativas exigem SUPPORT_ADMIN_TOKEN.
+app.use(createSupportRouter(pool));
+
 app.post("/bot/test", async (req, res) => {
   const { app: appName, client_id: clientId, command = "chat", message = "" } = req.body || {};
   if (appName !== "ALVES PLAY") return res.status(400).json({ allowed: false, message: "Aplicativo inválido." });
@@ -49,7 +53,6 @@ app.post("/bot/test", async (req, res) => {
   if (typeof command !== "string" || !/^[a-zA-Z0-9_-]{1,40}$/.test(command)) return res.status(400).json({ allowed: false, message: "Comando inválido." });
   if (typeof message !== "string" || message.length > 4000) return res.status(400).json({ allowed: false, message: "Mensagem inválida ou muito longa." });
 
-  // Não iniciar/consumir o teste antes da configuração do provedor.
   if (!providerUrl) return res.status(503).json({ allowed: false, message: "O serviço do bot ainda está sendo configurado. Seu teste não foi iniciado." });
 
   const db = await pool.connect();
@@ -114,6 +117,29 @@ async function start() {
     )
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS app_clients_trial_ends_idx ON app_clients (trial_ends_at)");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_conversations (
+      id BIGSERIAL PRIMARY KEY,
+      app_name TEXT NOT NULL DEFAULT 'ALVES PLAY',
+      client_id VARCHAR(128) NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT support_app_client_unique UNIQUE (app_name, client_id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id BIGSERIAL PRIMARY KEY,
+      conversation_id BIGINT NOT NULL REFERENCES support_conversations(id) ON DELETE CASCADE,
+      sender TEXT NOT NULL CHECK (sender IN ('client', 'admin')),
+      message TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 4000),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      read_at TIMESTAMPTZ
+    )
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS support_conversations_updated_idx ON support_conversations (updated_at DESC)");
+  await pool.query("CREATE INDEX IF NOT EXISTS support_messages_conversation_idx ON support_messages (conversation_id, id)");
   app.listen(port, "0.0.0.0", () => console.log(`ALVES PLAY API ouvindo na porta ${port}`));
 }
 start().catch(error => {
