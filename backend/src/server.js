@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const cors = require("cors");
 const { Pool } = require("pg");
 const { createSupportRouter } = require("./support");
+const { createBotAdminRouter } = require("./bot-admin");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -45,6 +46,7 @@ app.get("/health", async (_req, res) => {
 
 // Atendimento cliente <-> administrador; rotas administrativas exigem SUPPORT_ADMIN_TOKEN.
 app.use(createSupportRouter(pool));
+app.use(createBotAdminRouter(pool));
 
 app.post("/bot/test", async (req, res) => {
   const { app: appName, client_id: clientId, command = "chat", message = "" } = req.body || {};
@@ -117,6 +119,30 @@ async function start() {
     )
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS app_clients_trial_ends_idx ON app_clients (trial_ends_at)");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bot_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      active_mode TEXT NOT NULL DEFAULT 'sem_adulto' CHECK (active_mode IN ('sem_adulto','completo')),
+      sem_adulto_url TEXT NOT NULL DEFAULT '',
+      completo_url TEXT NOT NULL DEFAULT '',
+      request_method TEXT NOT NULL DEFAULT 'POST' CHECK (request_method IN ('GET','POST')),
+      enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS client_m3u_lists (
+      id BIGSERIAL PRIMARY KEY,
+      client_id VARCHAR(128) NOT NULL,
+      client_name VARCHAR(120) NOT NULL,
+      list_name VARCHAR(120) NOT NULL,
+      m3u_url TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS client_m3u_lists_client_idx ON client_m3u_lists (client_id)");
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS support_conversations (
       id BIGSERIAL PRIMARY KEY,
