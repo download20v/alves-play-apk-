@@ -7,7 +7,7 @@ function createBotAdminRouter(pool) {
   const token = process.env.SUPPORT_ADMIN_TOKEN || "";
   function adminOnly(req,res,next) {
     if (!token) return res.status(503).json({error:"admin_token_not_configured"});
-    const supplied=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+    const supplied=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const a=Buffer.from(supplied), b=Buffer.from(token);
     if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"unauthorized"});
     next();
